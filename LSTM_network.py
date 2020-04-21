@@ -21,7 +21,7 @@ from keras import losses
 import numpy as np
 import csv
 
-class PeriodicFunctionLSTM:
+class LSTM_network:
     
     def __init__(self, s, k, architecture_LSTM, architecture_CNN = [], architecture_FC = [], m=1):
         inputs = Input(shape=(s, k))
