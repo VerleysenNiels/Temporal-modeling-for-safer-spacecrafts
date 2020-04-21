@@ -23,7 +23,7 @@ import csv
 
 class LSTM_network:
     
-    def __init__(self, s, k, architecture_LSTM, architecture_CNN = [], architecture_FC = [], m=1):
+    def __init__(self, s, k, m, architecture_LSTM, architecture_CNN = [], architecture_FC = []):
         inputs = Input(shape=(s, k))
         l = inputs
 
