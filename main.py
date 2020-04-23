@@ -27,10 +27,10 @@ Define global variables
 EPOCHS = 500
 BATCH_SIZE = 200
 TRAINING_SIZE = 10000
-NAME = "6_LSTM_300_K_200_M_100"    # Output files will be saved with this name in their respective folders
+NAME = "6_LSTM_400_K_200_M_100"    # Output files will be saved with this name in their respective folders
 K = 200                              # Number of previous timesteps as input
 M = 100                              # Number of timesteps predicted
-architecture_LSTM = [300, 300, 300, 300, 300, 300]  # Define LSTM layers of the network
+architecture_LSTM = [400, 400, 400, 400, 400, 400]  # Define LSTM layers of the network
 architecture_FC = []                 # Define Fully Connected layers of the network
 architecture_CNN = []                # Define CNN layers of the network
 
