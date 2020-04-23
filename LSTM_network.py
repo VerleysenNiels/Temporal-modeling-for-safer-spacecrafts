@@ -48,7 +48,7 @@ class LSTM_network:
         
         self.model.summary()
         
-        filepath="./Weights/weights-improvement-{epoch:02d}-{loss:.4f}.hdf5"
+        filepath="./Results/Weights/weights-improvement-{epoch:02d}-{loss:.4f}.hdf5"
         checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
         self.callbacks_list = [checkpoint]
         
@@ -84,8 +84,7 @@ class LSTM_network:
             w.writerow(title)
 
             # Make single prediction
-            xhat = x[0]
-            yhat = self.model.predict(np.expand_dims(xhat, axis=0))
+            yhat = self.model.predict(np.expand_dims(x, axis=0))
 
             predictions = []
 
