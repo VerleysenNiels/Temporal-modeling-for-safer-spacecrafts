@@ -15,7 +15,7 @@ M = amount of timesteps predicted into the future
 """
 
 from keras.models import Model
-from keras.layers import LSTM, Input, Dense#, Conv1D, MaxPooling1D
+from keras.layers import LSTM, Input, Dense, Conv1D, MaxPooling1D
 from keras.callbacks import ModelCheckpoint
 from keras import losses
 import numpy as np
@@ -27,10 +27,10 @@ class LSTM_network:
         inputs = Input(shape=(s, k))
         l = inputs
 
-        #if len(architecture_CNN) > 0:
-            #for layer in architecture_CNN:
-                #l = Conv1D(layer[0], layer[1])(l)
-                #l = MaxPooling1D()(l)
+        if len(architecture_CNN) > 0:
+            for layer in architecture_CNN:
+                l = Conv1D(layer[0], layer[1])(l)
+                l = MaxPooling1D()(l)
 
         for i in range(0, len(architecture_LSTM)-1):
             l = LSTM(int(architecture_LSTM[i]), return_sequences=True)(l)
