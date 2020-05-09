@@ -20,6 +20,7 @@ from LSTM_network import LSTM_network
 from Dataset_Exporter import Dataset_Exporter, Dataset
 import numpy as np
 import csv
+import matplotlib.pyplot as plt
 
 """
 Define global variables
@@ -27,12 +28,18 @@ Define global variables
 EPOCHS = 500
 BATCH_SIZE = 200
 TRAINING_SIZE = 10000
-NAME = "2_CNN_6_LSTM_400_K_200_M_100"    # Output files will be saved with this name in their respective folders
+NAME = "6_LSTM_300_K_200_M_100"    # Output files will be saved with this name in their respective folders
 K = 200                              # Number of previous timesteps as input
 M = 100                              # Number of timesteps predicted
-architecture_LSTM = [400, 400, 400, 400, 400, 400]  # Define LSTM layers of the network
+architecture_LSTM = [300, 300, 300, 300, 300, 300]  # Define LSTM layers of the network
 architecture_FC = []                 # Define Fully Connected layers of the network
-architecture_CNN = [[128, 3], [64, 3]]                # Define CNN layers of the network
+architecture_CNN = []       #[[2800, 4], [1400, 3]]                # Define CNN layers of the network
+
+END = 1000      # 10 days
+THRESHOLD = 0.5
+anomaly_name = "Anomaly_NDMA5790_NDWDBT0K"
+anomalous = [3, 12]
+start_times = [200, 500]
 
 """
 Build training set 
@@ -48,11 +55,11 @@ def build_dataset(k, m, dataset_expt):
     
     return np.array(X), np.array(Y)
 
-"""
-MAIN
-"""
-if __name__ == '__main__':
 
+"""
+MAIN for training and testing a neural network on the dataset
+"""
+def train_and_test():
     dataset_expt = Dataset_Exporter()
     dataset_expt.load("./Data/Dataset.pickle")
     dataset_expt.normalize(TRAINING_SIZE)
@@ -84,3 +91,89 @@ if __name__ == '__main__':
         w.writerow(["Sensor", "Mean Absolute Error", "Standard Deviation of the loss"])
         for i in range(0, len(losses)):
             w.writerow([dataset_expt.dataset.sensors[i], losses[i], stdvs[i]])
+
+
+"""
+MAIN for testing anomaly detection
+"""
+def test_anomaly():
+    # SETUP
+    dataset_expt = Dataset_Exporter()
+    dataset_expt.load("./Data/Dataset.pickle")
+    dataset_expt.normalize(TRAINING_SIZE)
+
+    # Add anomalies to the data
+    dataset_expt.add_anomaly(TRAINING_SIZE, TRAINING_SIZE+1001, -0.001, anomalous, start_times)
+
+    S = len(dataset_expt.dataset.sensors)
+
+    # Build model
+    model = LSTM_network(S, K, M, architecture_LSTM, architecture_CNN=architecture_CNN, architecture_FC=architecture_FC)
+
+    # Load model
+    model.load("./Results/Trained/6_LSTM_300_K_200_M_100.hdf5")
+
+    # Setup voting system and predictions
+    votes =[]
+    predictions = [] # Structured as [time1, time2, time3, ...] with timex = [sensor1, sensor2, ...] where each sensor contains the predictions for that sensor at that timestep
+    for sensor in dataset_expt.dataset.sensors:
+        votes.append([])
+
+    # Loop
+    for time in range(0, END):
+        # Predict next day
+        x = np.transpose(np.array(dataset_expt.dataset.normalized[time+TRAINING_SIZE-K: time+TRAINING_SIZE]))
+        x = np.expand_dims(x, axis=0)
+        yhat = model.predict(x)
+
+        # Add predictions
+        # Loop over the sensors
+        for i in range(0, len(dataset_expt.dataset.sensors)):
+            # Loop over predicted timesteps
+            for t in range(0, M):
+                # Add new list for predictions if this timestep does not have one
+                if len(predictions) < time+t+1:
+                    new_list = []
+                    for s in dataset_expt.dataset.sensors:
+                        new_list.append([])
+                    predictions.append(new_list)
+                # Add prediction to the right list
+                predictions[time+t][i].append(yhat[0][i*M + t])
+
+        # Voting based on the absolute error of each prediction for this timestep
+        y = np.transpose(np.array(dataset_expt.dataset.normalized[time + TRAINING_SIZE]))
+        for s in range(0, len(dataset_expt.dataset.sensors)):
+            vote = 0
+            for pred in predictions[time][s]:
+                difference = abs(y[s] - pred)
+                if difference > THRESHOLD:
+                    vote += 1
+            votes[s].append(vote)
+
+    # Plot the votes
+    for i in range(0, len(votes)):
+        if i not in [8, 10, 11]:        # Remove NACAH signals
+            plt.plot(votes[i])
+
+    names = dataset_expt.dataset.sensors
+    names.pop(11)
+    names.pop(10)
+    names.pop(8)
+
+    plt.ylabel("Votes")
+    plt.xlabel("Time (stepsize 0.01185 day)")
+    plt.ylim(0, 100)
+    plt.xlim(0, END)
+    plt.title('Anomaly voting')
+    plt.legend(names)
+    plt.tight_layout()
+    plt.savefig("./Results/Anomaly/" + anomaly_name, dpi=500)
+
+"""
+MAIN
+"""
+if __name__ == '__main__':
+
+    # train_and_test()
+
+    test_anomaly()

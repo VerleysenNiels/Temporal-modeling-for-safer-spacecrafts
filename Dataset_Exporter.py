@@ -144,6 +144,11 @@ class Dataset_Exporter:
             plt.tight_layout()
             plt.savefig("./Plots/" + str(self.dataset.sensors[i]), dpi=1000)
 
+    # Add an anomaly
+    def add_anomaly(self, start, end, slope, sensors, onsets):
+        for i in range(0, len(sensors)):
+            for j in range(start+onsets[i], end):
+                self.dataset.normalized[j][sensors[i]] += j-(start+onsets[i]) * slope
     # Normalize
     def normalize(self, training_size):
         # Determine which portion of the data will be used for training
@@ -160,10 +165,11 @@ class Dataset_Exporter:
 # Test or run through here
 if __name__ == '__main__':
     exporter = Dataset_Exporter()
-    exporter.load("Dataset.pickle")
+    exporter.load("./Data/Dataset.pickle")
     #print(exporter.dataset.sensors)
     #print(exporter.dataset.timing)
     #exporter.normalize(8500)  # about 100 days
-    exporter.plot(normalized=True)
+    #exporter.plot(normalized=True)
     #exporter.dump("Dataset.pickle")
+    print(str(exporter.dataset.timing[1]-exporter.dataset.timing[0]))
 

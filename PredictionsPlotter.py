@@ -38,8 +38,8 @@ def generate_plots(data, path):
 
 if __name__ == '__main__':
 
-    input_file = './Results/Predictions/6_LSTM_400_K_200_M_100.csv'
-    output_folder = './Results/Predictions/Plots/6_LSTM_400_K_200_M_100/'
+    input_file = './Results/Predictions/6_LSTM_300_K_200_M_100.csv'
+    output_folder = './Results/Predictions/Plots/6_LSTM_300_K_200_M_100/'
 
     data = read(input_file)
     generate_plots(data, output_folder)
