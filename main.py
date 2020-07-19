@@ -36,10 +36,9 @@ architecture_FC = []                 # Define Fully Connected layers of the netw
 architecture_CNN = []       #[[2800, 4], [1400, 3]]                # Define CNN layers of the network
 
 END = 1000      # 10 days
-THRESHOLD = 0.5
-anomaly_name = "Anomaly_NDMA5790_NDWDBT0K"
-anomalous = [3, 12]
-start_times = [200, 500]
+anomaly_name = "Anomaly_NDWDBT0K" # NACW0S00, NACW0S01, NDMA5790, NDWDBT0K"
+anomalous = [12]# 0, 2, 3, 12]
+start_times = [200]
 
 """
 Build training set 
@@ -103,7 +102,7 @@ def test_anomaly():
     dataset_expt.normalize(TRAINING_SIZE)
 
     # Add anomalies to the data
-    dataset_expt.add_anomaly(TRAINING_SIZE, TRAINING_SIZE+1001, -0.001, anomalous, start_times)
+    dataset_expt.add_anomaly(TRAINING_SIZE, TRAINING_SIZE+1001, -0.01, anomalous, start_times)
 
     S = len(dataset_expt.dataset.sensors)
 
@@ -113,11 +112,11 @@ def test_anomaly():
     # Load model
     model.load("./Results/Trained/6_LSTM_300_K_200_M_100.hdf5")
 
-    # Setup voting system and predictions
-    votes =[]
+    # Setup sensor ranking and predictions
+    mae = []
     predictions = [] # Structured as [time1, time2, time3, ...] with timex = [sensor1, sensor2, ...] where each sensor contains the predictions for that sensor at that timestep
     for sensor in dataset_expt.dataset.sensors:
-        votes.append([])
+        mae.append([])
 
     # Loop
     for time in range(0, END):
@@ -140,34 +139,91 @@ def test_anomaly():
                 # Add prediction to the right list
                 predictions[time+t][i].append(yhat[0][i*M + t])
 
-        # Voting based on the absolute error of each prediction for this timestep
+        # Determine absolute error of each prediction for this timestep
         y = np.transpose(np.array(dataset_expt.dataset.normalized[time + TRAINING_SIZE]))
         for s in range(0, len(dataset_expt.dataset.sensors)):
-            vote = 0
+            nr = 0
+            error = 0
             for pred in predictions[time][s]:
                 difference = abs(y[s] - pred)
-                if difference > THRESHOLD:
-                    vote += 1
-            votes[s].append(vote)
+                error += difference
+                nr += 1
+            e = error / nr
+            mae[s].append(e)
 
-    # Plot the votes
-    for i in range(0, len(votes)):
-        if i not in [8, 10, 11]:        # Remove NACAH signals
-            plt.plot(votes[i])
+    # Plot the mean absolute error
+    errors = []
+    for t in range(0, len(mae[0])):
+        error = 0
+        nr = 0
+        for s in range(0, len(mae)):
+            if s not in [8, 10, 11]:        # Remove NACAH signals
+                error += mae[s][t]
+                nr += 1
+        e = error / nr
+        errors.append(e)
 
-    names = dataset_expt.dataset.sensors
-    names.pop(11)
-    names.pop(10)
-    names.pop(8)
-
-    plt.ylabel("Votes")
+    plt.plot(errors)
+    plt.ylabel("MAE")
     plt.xlabel("Time (stepsize 0.01185 day)")
-    plt.ylim(0, 100)
     plt.xlim(0, END)
-    plt.title('Anomaly voting')
-    plt.legend(names)
+    plt.ylim(-0.2, 1)
+    plt.title('Loss over time')
     plt.tight_layout()
     plt.savefig("./Results/Anomaly/" + anomaly_name, dpi=500)
+    plt.clf()
+
+    names = dataset_expt.dataset.sensors
+    index = list(range(0, len(mae)))
+    index.pop(11)
+    index.pop(10)
+    index.pop(8)
+
+    # Print ordering of sensors at different timesteps
+    print("Top 5 sensors according to loss:")
+    for t in [50, 200, 210, 220, 230, 240, 250, 300, 500, 510, 520, 530, 540, 550, 600]:
+        ordering = sorted(index, reverse=True, key=lambda s: mae[s][t])
+        print("At timestep " + str(t) + ":")
+        for i in range(0, 5):
+            print("\t" + str(i+1) + ". " + names[ordering[i]] + "\t" + str(mae[ordering[i]][t]))
+
+    false_positives = []
+    delays = []
+    start = start_times[0]
+    thresholds = np.arange(0, 2, 0.05)
+
+    # For each threshold -> get detected anomalies
+    for threshold in thresholds:
+        fp = 0
+        delay = 0
+        first = True
+        for i in range(0, len(errors)):
+            # Anomaly detected?
+            if errors[i] > threshold:
+                # False detection?
+                if i + 1 < start:
+                    fp += 1
+                elif first:
+                    delay = i - start + 1
+                    first = False
+        if first:
+            delays.append(None)
+        else:
+            delays.append(delay)
+        false_positives.append(fp / start)
+
+    # Plot detection delay and false positive rate for different thresholds
+    plt.plot(thresholds, false_positives)
+    plt.xlabel("Threshold")
+    plt.ylabel("False positive rate")
+    plt.savefig("./Results/Anomaly/Plot_thresh-fpr_" + anomaly_name, dpi=500)
+    plt.clf()
+
+    plt.plot(false_positives, delays)
+    plt.xlabel("False positive rate")
+    plt.ylabel("Delay")
+    plt.savefig("./Results/Anomaly/Plot_fpr-delay_" + anomaly_name, dpi=500)
+    plt.clf()
 
 """
 MAIN

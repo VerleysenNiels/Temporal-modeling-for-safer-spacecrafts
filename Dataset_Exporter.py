@@ -148,7 +148,7 @@ class Dataset_Exporter:
     def add_anomaly(self, start, end, slope, sensors, onsets):
         for i in range(0, len(sensors)):
             for j in range(start+onsets[i], end):
-                self.dataset.normalized[j][sensors[i]] += j-(start+onsets[i]) * slope
+                self.dataset.normalized[j][sensors[i]] += (j-(start+onsets[i])) * slope
     # Normalize
     def normalize(self, training_size):
         # Determine which portion of the data will be used for training
